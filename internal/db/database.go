@@ -28,6 +28,7 @@ func InitDB() {
 		user_id INTEGER NOT NULL,
 		title TEXT,
 		content TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY(user_id) REFERENCES users(id),	
 	);
 
@@ -36,7 +37,8 @@ func InitDB() {
 		user_id INTEGER NOT NULL,
 		title TEXT,
 		content TEXT,
-		due_date DATETIME,
+		due DATETIME NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY(user_id) REFERENCES users(id),
 	);
 	`
