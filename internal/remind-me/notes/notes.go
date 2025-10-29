@@ -1,0 +1,33 @@
+package notes
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/z-sk1/signin-api/internal/db"
+)
+
+type Note struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Title    string `json:"title"`
+	Content  string `json:"content"`
+}
+
+func CreateNote(c *gin.Context) {
+	username := c.GetString("username")
+	var note Note
+
+	if err := c.BindJSON(&note); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	_, err := db.DB.Exec("INSERT INTO notes(username, title, content) VALUES (?, ?, ?)", username, note.Title, note.Content)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save note"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "note created succesfully"})
+}

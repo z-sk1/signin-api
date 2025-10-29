@@ -13,9 +13,9 @@ func getOrCreateSecret() []byte {
 	}
 
 	// Create one if not found
-	b := make([]byte, 64)
+	b := make([]byte, 32)
 	rand.Read(b)
 	hexSecret := hex.EncodeToString(b)
-	os.WriteFile("internal/auth/secret.txt", []byte(hexSecret), 0600)
+	os.WriteFile("secret.txt", []byte(hexSecret), 0600)
 	return []byte(hexSecret)
 }

@@ -3,9 +3,12 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/z-sk1/signin-api/internal/auth"
+	"github.com/z-sk1/signin-api/internal/db"
 )
 
 func main() {
+	db.InitDB()
+
 	r := gin.Default()
 
 	// auth routes

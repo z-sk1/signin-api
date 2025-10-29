@@ -1,12 +1,14 @@
 package auth
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/z-sk1/signin-api/internal/db"
 )
 
 var jwtKey []byte
@@ -22,9 +24,6 @@ type User struct {
 	Password string `json:"password"`
 }
 
-// in memory store for now
-var users = map[string]string{}
-
 // jwt claims
 type Claims struct {
 	Username string `json:"username"`
@@ -38,12 +37,27 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
-	if _, exists := users[newUser.Username]; exists {
+	// check if user exists
+
+	var exists int
+	err := db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", newUser.Username).Scan(&exists)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	if exists > 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user already exists"})
 		return
 	}
 
-	users[newUser.Username] = newUser.Password
+	// insert new user
+	_, err = db.DB.Exec("INSERT INTO users(username, password) VALUES(?, ?)", newUser.Username, newUser.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not create user"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "user created succesfully"})
 }
 
@@ -55,9 +69,14 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	storedPassword, ok := users[creds.Username]
-	if !ok || storedPassword != creds.Password {
+	var storedPassword string
+	err := db.DB.QueryRow("SELECT password FROM users WHERE username = ?", creds.Username).Scan(&storedPassword)
+	if err == sql.ErrNoRows || storedPassword != creds.Password {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username or password"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
 	}
 
 	expirationTime := time.Now().Add(24 * time.Hour)
@@ -76,6 +95,40 @@ func Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"token": tokenStr})
+}
+
+func DeleteAccount(c *gin.Context) {
+	tokenStr := c.GetHeader("Authorization")
+	if tokenStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+		c.Abort()
+		return
+	}
+
+	if len(tokenStr) > 7 && tokenStr[:7] == "Bearer " {
+		tokenStr = tokenStr[7:]
+	}
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		c.Abort()
+		return
+	}
+
+	username := claims.Username
+
+	_, err = db.DB.Exec("DELETE FROM users WHERE username = ?", username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not delete account"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "account deleted successfully"})
 }
 
 func RequireAuth(c *gin.Context) {
