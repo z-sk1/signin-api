@@ -42,3 +42,36 @@ func CreateNote(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "note created succesfully"})
 }
+
+func GetAllNotes(c *gin.Context) {
+	username := c.GetString("username")
+
+	// find user id 
+	var userID int
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
+		return
+	}
+
+	// get all notes for user
+	rows, err := db.DB.Query("SELECT id, title, content, created_at FROM notes WHERE user_id = ?", userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find notes"})
+		return
+	}
+	defer rows.Close()
+
+	var notes []Note
+	for rows.Next() {
+		var note Note
+		if err := rows.Scan(&note.ID, &note.Title, &note.Content, &note.CreatedAt); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not read notes"})
+			return
+		}
+		note.Username = username 
+		notes = append(notes, note)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"notes": notes})
+}

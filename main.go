@@ -4,6 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/z-sk1/signin-api/internal/auth"
 	"github.com/z-sk1/signin-api/internal/db"
+	"github.com/z-sk1/signin-api/internal/remind-me/notes"
+	"github.com/z-sk1/signin-api/internal/remind-me/reminders"
 )
 
 func main() {
@@ -15,11 +17,17 @@ func main() {
 	r.POST("/signup", auth.SignUp)
 	r.POST("/login", auth.Login)
 
-	// Test protected route
-	r.GET("/me", auth.RequireAuth, auth.Me)
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "hello"})
-	})
+	// protected routes 
+	authRoutes := r.Group("/")
+	authRoutes.Use(auth.RequireAuth) 
+	{
+		authRoutes.GET("/me", auth.Me)
+		authRoutes.DELETE("/delete", auth.DeleteAccount)
+
+		// notes 
+		authRoutes.POST("/notes", notes.CreateNote)
+		authRoutes.GET("/notes", notes.GetAllNotes)
+	}
 
 	r.Run(":8080")
 }
