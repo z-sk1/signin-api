@@ -34,7 +34,7 @@ func CreateNote(c *gin.Context) {
 		return
 	}
 
-	_, err = db.DB.Exec("INSERT INTO notes(username, title, content) VALUES (?, ?, ?)", username, note.Title, note.Content)
+	_, err = db.DB.Exec("INSERT INTO notes(username, title, content, created_at) VALUES (?, ?, ?, ?)", username, note.Title, note.Content, note.CreatedAt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save note"})
 		return
@@ -46,7 +46,7 @@ func CreateNote(c *gin.Context) {
 func GetAllNotes(c *gin.Context) {
 	username := c.GetString("username")
 
-	// find user id 
+	// find user id
 	var userID int
 	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
 	if err != nil {
@@ -69,7 +69,7 @@ func GetAllNotes(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not read notes"})
 			return
 		}
-		note.Username = username 
+		note.Username = username
 		notes = append(notes, note)
 	}
 

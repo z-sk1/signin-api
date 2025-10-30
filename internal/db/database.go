@@ -20,7 +20,7 @@ func InitDB() {
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		username TEXT NOT NULL UNIQUE,
-		password TEXT NOT NULL UNIQUE,
+		password TEXT NOT NULL UNIQUE
 	);
 
 	CREATE TABLE IF NOT EXISTS notes (
@@ -28,8 +28,8 @@ func InitDB() {
 		user_id INTEGER NOT NULL,
 		title TEXT,
 		content TEXT,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY(user_id) REFERENCES users(id),	
+		created_at DATETIME NOT NULL,
+		FOREIGN KEY(user_id) REFERENCES users(id)	
 	);
 
 	CREATE TABLE IF NOT EXISTS reminders (
@@ -38,8 +38,8 @@ func InitDB() {
 		title TEXT,
 		content TEXT,
 		due DATETIME NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY(user_id) REFERENCES users(id),
+		created_at DATETIME NOT NULL,
+		FOREIGN KEY(user_id) REFERENCES users(id)
 	);
 	`
 
