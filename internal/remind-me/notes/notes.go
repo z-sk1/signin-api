@@ -34,7 +34,7 @@ func CreateNote(c *gin.Context) {
 		return
 	}
 
-	_, err = db.DB.Exec("INSERT INTO notes(username, title, content, created_at) VALUES (?, ?, ?, ?)", username, note.Title, note.Content, note.CreatedAt)
+	_, err = db.DB.Exec("INSERT INTO notes(username, title, content) VALUES (?, ?, ?)", username, note.Title, note.Content)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save note"})
 		return

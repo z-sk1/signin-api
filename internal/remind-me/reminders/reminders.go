@@ -34,7 +34,7 @@ func CreateReminder(c *gin.Context) {
 		return
 	}
 
-	_, err = db.DB.Exec("INSERT INTO reminders(username, title, content, due, created_at) (?, ?, ?, ?, ?)", username, reminder.Title, reminder.Content, reminder.Due, reminder.CreatedAt)
+	_, err = db.DB.Exec("INSERT INTO reminders(username, title, content, due, created_at) (?, ?, ?, ?)", username, reminder.Title, reminder.Content, reminder.Due)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save reminder"})
 		return
