@@ -11,12 +11,12 @@ import (
 	"github.com/z-sk1/signin-api/internal/db"
 )
 
-var jwtKey []byte
+var JwtKey []byte
 
 func init() {
-	jwtKey = getOrCreateSecret()
+	JwtKey = getOrCreateSecret()
 
-	fmt.Printf("jwt key: %s...", string(jwtKey)[:5])
+	fmt.Printf("jwt key: %s...", string(JwtKey)[:5])
 }
 
 type User struct {
@@ -88,7 +88,7 @@ func Login(c *gin.Context) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, err := token.SignedString(jwtKey)
+	tokenStr, err := token.SignedString(JwtKey)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "could not create token"})
 		return
@@ -111,7 +111,7 @@ func DeleteAccount(c *gin.Context) {
 
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtKey, nil
+		return JwtKey, nil
 	})
 
 	if err != nil || !token.Valid {
@@ -145,7 +145,7 @@ func RequireAuth(c *gin.Context) {
 
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtKey, nil
+		return JwtKey, nil
 	})
 
 	if err != nil || !token.Valid {

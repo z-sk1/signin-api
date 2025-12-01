@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/z-sk1/signin-api/internal/auth"
 	"github.com/z-sk1/signin-api/internal/db"
+	"github.com/z-sk1/signin-api/internal/keep-track/expenses"
 	"github.com/z-sk1/signin-api/internal/remind-me/notes"
 	"github.com/z-sk1/signin-api/internal/remind-me/reminders"
 )
@@ -39,11 +40,21 @@ func main() {
 		// notes
 		authRoutes.POST("/notes", notes.CreateNote)
 		authRoutes.GET("/notes", notes.GetAllNotes)
+		authRoutes.DELETE("/notes/:id", notes.DeleteNote)
+		authRoutes.PUT("/notes/:id", notes.UpdateNote)
 
 		// reminders
 		authRoutes.POST("/reminders", reminders.CreateReminder)
 		authRoutes.GET("/reminders", reminders.GetAllReminders)
+		authRoutes.DELETE("/reminders/:id", reminders.DeleteReminder)
+		authRoutes.PUT("/reminders/:id", reminders.UpdateReminder)
+
+		// expenses
+		authRoutes.POST("/expenses", expenses.CreateExpense)
+		authRoutes.GET("/expenses", expenses.GetAllExpenses)
+		authRoutes.DELETE("/expenses/:id", expenses.DeleteExpense)
+		authRoutes.PUT("/expenses/:id", expenses.UpdateExpense)
 	}
 
-	r.Run(":8080")
+	r.Run("0.0.0.0:8080")
 }
