@@ -40,6 +40,7 @@ func main() {
 		// notes
 		authRoutes.POST("/notes", notes.CreateNote)
 		authRoutes.GET("/notes", notes.GetAllNotes)
+		authRoutes.GET("/notes/total", notes.GetNoteCount)
 		authRoutes.DELETE("/notes/:id", notes.DeleteNote)
 		authRoutes.PUT("/notes/:id", notes.UpdateNote)
 
