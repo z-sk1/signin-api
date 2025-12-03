@@ -53,6 +53,7 @@ func main() {
 		authRoutes.POST("/expenses", expenses.CreateExpense)
 		authRoutes.GET("/expenses", expenses.GetAllExpenses)
 		authRoutes.GET("/expenses/total", expenses.GetTotalExpenses)
+		authRoutes.GET("/expenses/categories", expenses.GetExpenseCategories)
 		authRoutes.DELETE("/expenses/:id", expenses.DeleteExpense)
 		authRoutes.PUT("/expenses/:id", expenses.UpdateExpense)
 	}

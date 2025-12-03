@@ -103,13 +103,49 @@ func GetTotalExpenses(c *gin.Context) {
 
 	// find total spent 
 	var total float64 
-	err = db.DB.QueryRow("SELECT COALESCE((amount), 0) FROM expenses WHERE user_id = ?", userID).Scan(&total)
+	err = db.DB.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?", userID).Scan(&total)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not calculate total"})
 		return 
 	}
 
 	c.JSON(http.StatusOK, gin.H{"total": total})
+}
+
+func GetExpenseCategories(c *gin.Context) {
+	username := c.GetString("username")
+
+	// find user id 
+	var userID int
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
+		return
+	}
+
+	rows, err := db.DB.Query("SELECT category, COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ? GROUP BY category", userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not fetch categories"})
+		return
+	}
+	defer rows.Close()
+
+	type CatTotal struct {
+		Category string `json:"category"`
+		Total float64 `json:"total"`
+	}
+
+	var results []CatTotal 
+
+	for rows.Next() {
+		var ct CatTotal
+		if err := rows.Scan(&ct.Category, &ct.Total); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not read category totals"})
+			return
+		}
+		results = append(results, ct)
+	}
+	c.JSON(http.StatusOK, gin.H{"categories": results})
 }
 
 func DeleteExpense(c *gin.Context) {
