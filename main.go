@@ -52,6 +52,7 @@ func main() {
 		// expenses
 		authRoutes.POST("/expenses", expenses.CreateExpense)
 		authRoutes.GET("/expenses", expenses.GetAllExpenses)
+		authRoutes.GET("/expenses/total", expenses.GetTotalExpenses)
 		authRoutes.DELETE("/expenses/:id", expenses.DeleteExpense)
 		authRoutes.PUT("/expenses/:id", expenses.UpdateExpense)
 	}

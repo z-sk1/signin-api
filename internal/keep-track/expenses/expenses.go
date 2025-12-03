@@ -90,7 +90,7 @@ func GetAllExpenses(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"expenses": expenses})
 }
 
-func GetTotalExpenss(c *gin.Context) {
+func GetTotalExpenses(c *gin.Context) {
 	username := c.GetString("username")
 
 	// find user id
@@ -100,6 +100,16 @@ func GetTotalExpenss(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
 		return
 	}
+
+	// find total spent 
+	var total float64 
+	err = db.DB.QueryRow("SELECT COALESCE((amount), 0) FROM expenses WHERE user_id = ?", userID).Scan(&total)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not calculate total"})
+		return 
+	}
+
+	c.JSON(http.StatusOK, gin.H{"total": total})
 }
 
 func DeleteExpense(c *gin.Context) {
