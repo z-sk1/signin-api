@@ -47,6 +47,7 @@ func main() {
 		// reminders
 		authRoutes.POST("/reminders", reminders.CreateReminder)
 		authRoutes.GET("/reminders", reminders.GetAllReminders)
+		authRoutes.GET("/reminders/total", reminders.GetReminderCount)
 		authRoutes.DELETE("/reminders/:id", reminders.DeleteReminder)
 		authRoutes.PUT("/reminders/:id", reminders.UpdateReminder)
 

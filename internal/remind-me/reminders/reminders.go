@@ -91,6 +91,27 @@ func GetAllReminders(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"reminders": reminders})
 }
 
+func GetReminderCount(c *gin.Context) {
+	username := c.GetString("username")
+
+	// find user id 
+	var userID int 
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
+		return
+	}
+
+	var total int
+	err = db.DB.QueryRow("SELECT COUNT(*) AS total FROM reminders WHERE user_id = ?", userID).Scan(&total)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not get reminder count"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"total": total})
+}
+
 func DeleteReminder(c *gin.Context) {
 	tokenStr := c.GetHeader("Authorization")
 
