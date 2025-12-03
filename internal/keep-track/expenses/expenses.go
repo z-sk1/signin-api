@@ -90,6 +90,18 @@ func GetAllExpenses(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"expenses": expenses})
 }
 
+func GetTotalExpenss(c *gin.Context) {
+	username := c.GetString("username")
+
+	// find user id
+	var userID int
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
+		return
+	}
+}
+
 func DeleteExpense(c *gin.Context) {
 	tokenStr := c.GetHeader("Authorization")
 
