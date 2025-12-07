@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/z-sk1/signin-api/internal/db"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var JwtKey []byte
@@ -51,8 +52,15 @@ func SignUp(c *gin.Context) {
 		return
 	}
 
+	// hash the password
+	hashed, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not hash password"})
+		return
+	}
+
 	// insert new user
-	_, err = db.DB.Exec("INSERT INTO users(username, password) VALUES(?, ?)", newUser.Username, newUser.Password)
+	_, err = db.DB.Exec("INSERT INTO users(username, password) VALUES(?, ?)", newUser.Username, string(hashed))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not create user"})
 		return
@@ -69,13 +77,20 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	var storedPassword string
-	err := db.DB.QueryRow("SELECT password FROM users WHERE username = ?", creds.Username).Scan(&storedPassword)
-	if err == sql.ErrNoRows || storedPassword != creds.Password {
+	var storedHashPassword string
+	err := db.DB.QueryRow("SELECT password FROM users WHERE username = ?", creds.Username).Scan(&storedHashPassword)
+	if err == sql.ErrNoRows {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username or password"})
 		return
 	} else if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	// verify hashed password
+	err = bcrypt.CompareHashAndPassword([]byte(storedHashPassword), []byte(creds.Password))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username or password"})
 		return
 	}
 

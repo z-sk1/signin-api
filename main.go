@@ -29,7 +29,6 @@ func main() {
 	// auth routes
 	r.POST("/signup", auth.SignUp)
 	r.POST("/login", auth.Login)
-	r.DELETE("/delete", auth.DeleteAccount)
 
 	// protected routes
 	authRoutes := r.Group("/")
@@ -54,7 +53,7 @@ func main() {
 
 		// expenses
 		authRoutes.POST("/expenses", expenses.CreateExpense)
-		
+
 		authRoutes.GET("/expenses", expenses.GetAllExpenses)
 		authRoutes.GET("/expenses/total", expenses.GetTotalExpenses)
 		authRoutes.GET("/expenses/categories", expenses.GetExpenseCategories)
