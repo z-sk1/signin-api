@@ -21,6 +21,7 @@ func init() {
 }
 
 type User struct {
+	Email    string `json:"email"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
@@ -41,7 +42,7 @@ func SignUp(c *gin.Context) {
 	// check if user exists
 
 	var exists int
-	err := db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", newUser.Username).Scan(&exists)
+	err := db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = ? OR email = ?", newUser.Username, newUser.Email).Scan(&exists)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 		return
@@ -60,7 +61,7 @@ func SignUp(c *gin.Context) {
 	}
 
 	// insert new user
-	_, err = db.DB.Exec("INSERT INTO users(username, password) VALUES(?, ?)", newUser.Username, string(hashed))
+	_, err = db.DB.Exec("INSERT INTO users(email, username, password) VALUES(?, ?, ?)", newUser.Email, newUser.Username, string(hashed))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not create user"})
 		return
@@ -78,9 +79,17 @@ func Login(c *gin.Context) {
 	}
 
 	var storedHashPassword string
-	err := db.DB.QueryRow("SELECT password FROM users WHERE username = ?", creds.Username).Scan(&storedHashPassword)
+	var actualUsername string
+	var storedEmail string
+
+	identifier := creds.Username
+	if identifier == "" {
+		identifier = creds.Email
+	}
+
+	err := db.DB.QueryRow("SELECT username, email, password FROM users WHERE username = ? OR email = ?", identifier, identifier).Scan(&actualUsername, &storedEmail, &storedHashPassword)
 	if err == sql.ErrNoRows {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username or password"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username/email or password"})
 		return
 	} else if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
@@ -90,13 +99,14 @@ func Login(c *gin.Context) {
 	// verify hashed password
 	err = bcrypt.CompareHashAndPassword([]byte(storedHashPassword), []byte(creds.Password))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username or password"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username/email or password"})
 		return
 	}
 
 	expirationTime := time.Now().Add(24 * time.Hour)
+
 	claims := &Claims{
-		Username: creds.Username,
+		Username: actualUsername,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -170,10 +180,19 @@ func RequireAuth(c *gin.Context) {
 	}
 
 	c.Set("username", claims.Username)
+
+	var email string
+	err = db.DB.QueryRow("SELECT email FROM users WHERE username = ?", claims.Username).Scan(&email)
+	if err == nil {
+		c.Set("email", email)
+	}
+
 	c.Next()
 }
 
 func Me(c *gin.Context) {
 	username := c.GetString("username")
-	c.JSON(http.StatusOK, gin.H{"username": username})
+	email := c.GetString("email")
+
+	c.JSON(http.StatusOK, gin.H{"username": username, "email": email})
 }
