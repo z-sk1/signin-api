@@ -29,6 +29,8 @@ func main() {
 	// auth routes
 	r.POST("/signup", auth.SignUp)
 	r.POST("/login", auth.Login)
+	r.POST("/forgot-password", auth.ForgotPassword)
+	r.POST("/reset-password", auth.ResetPassword)
 
 	// protected routes
 	authRoutes := r.Group("/")

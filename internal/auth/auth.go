@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"time"
@@ -154,6 +156,99 @@ func DeleteAccount(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "account deleted successfully"})
+}
+
+func ForgotPassword(c *gin.Context) {
+	var body struct {
+		Email string `json:"email"`
+	}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	var exists int
+	err := db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", body.Email).Scan(&exists)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	if exists == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "If this email exists, a reset link was sent"})
+		return
+	}
+
+	// generate token
+	tokenBytes := make([]byte, 32)
+	rand.Read(tokenBytes)
+	token := hex.EncodeToString(tokenBytes)
+
+	// hash token for storage
+	hash, _ := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
+
+	expiresAt := time.Now().Add(15 * time.Minute).Unix()
+
+	// store token
+	db.DB.Exec("INSERT INTO password_resets(email, token_hash, expires_at) VALUES(?, ?, ?)", body.Email, string(hash), expiresAt)
+
+	// send token for testing
+	c.JSON(http.StatusOK, gin.H{
+		"reset_token": token, // remove later
+		"message":     "reset link created",
+	})
+}
+
+func ResetPassword(c *gin.Context) {
+	var body struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad request"})
+		return
+	}
+
+	rows, err := db.DB.Query("SELECT email, token_hash, expires_at FROM password_resets")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+	defer rows.Close()
+
+	var email string
+	var tokenHash string
+	var expiresAt int64
+	found := false
+
+	for rows.Next() {
+		rows.Scan(&email, &tokenHash, &expiresAt)
+
+		if bcrypt.CompareHashAndPassword([]byte(tokenHash), []byte(body.Token)) == nil {
+			found = true
+			break
+		}
+	}
+
+	if !found || expiresAt < time.Now().Unix() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired token"})
+		return
+	}
+
+	newHash, _ := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+
+	_, err = db.DB.Exec("UPDATE users SET password = ? WHERE email = ?", string(newHash), email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update password"})
+		return
+	}
+
+	// delete used token
+	db.DB.Exec("DELETE FROM password_resets WHERE email = ?", email)
+
+	c.JSON(http.StatusOK, gin.H{"message": "password reset successful"})
 }
 
 func RequireAuth(c *gin.Context) {

@@ -24,6 +24,12 @@ func InitDB() {
 		password TEXT NOT NULL UNIQUE
 	);
 
+	CREATE TABLE IF NOT EXISTS password_resets (
+		email TEXT NOT NULL,
+		token_hash TEXT NOT NULL,
+		expires_at INTEGER NOT NULL
+	);
+
 	CREATE TABLE IF NOT EXISTS notes (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id INTEGER NOT NULL,
