@@ -28,10 +28,18 @@ func AddLeaderboardScore(c *gin.Context) {
 		return
 	}
 
-	_, err := db.DB.Exec(`
+	username := c.GetString("username")
+	var userID int
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username=$1", username).Scan(&userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
+		return
+	}
+
+	_, err = db.DB.Exec(`
 		INSERT INTO leaderboard (section, name, points)
-		VALUES ($1, $2, $3)
-	`, entry.Section, entry.Name, entry.Points)
+		VALUES ($1, $2, $3, $4, $5)
+	`, userID, username, entry.Section, entry.Name, entry.Points)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add score"})
@@ -47,7 +55,7 @@ func GetAllLeaderboardScores(c *gin.Context) {
 	rows, err := db.DB.Query(`
 		SELECT id, name, points
 		FROM leaderboard
-		WHERE section = ?
+		WHERE section = $1
 		ORDER BY points DESC
 	`, section)
 
