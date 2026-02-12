@@ -16,11 +16,7 @@ type LeaderboardEntry struct {
 }
 
 func AddLeaderboardScore(c *gin.Context) {
-	var entry struct {
-		Section string `json:"section"`
-		Name    string `json:"name"`
-		Points  int    `json:"points"`
-	}
+	var entry LeaderboardEntry
 
 	if err := c.BindJSON(&entry); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
