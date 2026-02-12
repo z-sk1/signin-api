@@ -45,7 +45,7 @@ func main() {
 		authRoutes.DELETE("/delete", auth.DeleteAccount)
 
 		// admin
-		adminRoutes := r.Group("/admin")
+		adminRoutes := authRoutes.Group("/admin")
 		adminRoutes.Use(auth.RequireAdmin)
 		{
 			adminRoutes.POST("/leaderboard", leaderboard.AddLeaderboardScore)
