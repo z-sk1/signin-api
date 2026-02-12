@@ -30,9 +30,21 @@ func AddLeaderboardScore(c *gin.Context) {
 
 	username := c.GetString("username")
 	var userID int
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username=$1", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
+		return
+	}
+
+	var name string
+	err = db.DB.QueryRow("SELECT name FROM users WHERE username = $1", username).Scan(&name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	if name == entry.Name {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name already exists"})
 		return
 	}
 
