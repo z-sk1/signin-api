@@ -14,12 +14,19 @@ var DB *sql.DB
 func ensureAdmin() {
 	var count int
 
-	err := DB.QueryRow("SELECT COUNT(*) from USERS WHERE role = 'admin'").Scan(&count)
+	err := DB.QueryRow("SELECT COUNT(*) FROM users WHERE role = 'admin'").Scan(&count)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	if count > 0 {
+		return // admin already exists
+	}
+
 	password := os.Getenv("ADMIN_PASSWORD")
+	if password == "" {
+		log.Fatal("ADMIN_PASSWORD environment variable not set")
+	}
 
 	// hash the password
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -28,7 +35,7 @@ func ensureAdmin() {
 	}
 
 	_, err = DB.Exec(`
-		INSERT INTO USERS (email, username, password, role)
+		INSERT INTO users (email, username, password, role)
 		VALUES ($1, $2, $3, $4)
 	`,
 		"ziad.skafi12@gmail.com",
@@ -47,9 +54,10 @@ func ensureAdmin() {
 func InitDB() {
 	var err error
 
-	// Example connection string:
 	connStr := os.Getenv("DATABASE_URL")
-	// DATABASE_URL example: "postgres://user:password@localhost:5432/dbname?sslmode=disable"
+	if connStr == "" {
+		log.Fatal("DATABASE_URL environment variable not set")
+	}
 
 	DB, err = sql.Open("postgres", connStr)
 	if err != nil {
@@ -58,10 +66,11 @@ func InitDB() {
 
 	err = DB.Ping()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to connect to database:", err)
 	}
 
 	createTables()
+
 	ensureAdmin()
 
 	log.Println("Database successfully initialized")
@@ -124,6 +133,6 @@ func createTables() {
 
 	_, err := DB.Exec(createTables)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to create tables:", err)
 	}
 }
