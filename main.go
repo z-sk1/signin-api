@@ -35,7 +35,7 @@ func main() {
 	r.POST("/reset-password", auth.ResetPassword)
 
 	// unprotected routes
-	r.GET("/leaderboard/:section", leaderboard.GetAllLeaderboardScores)
+	r.GET("/leaderboard", leaderboard.GetAllLeaderboardScores)
 
 	// protected routes
 	authRoutes := r.Group("/")
