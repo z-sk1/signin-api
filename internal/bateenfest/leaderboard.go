@@ -37,7 +37,7 @@ func AddLeaderboardScore(c *gin.Context) {
 	}
 
 	_, err = db.DB.Exec(`
-		INSERT INTO leaderboard (section, name, points)
+		INSERT INTO leaderboard (user_id, username, section, name, points)
 		VALUES ($1, $2, $3, $4, $5)
 	`, userID, username, entry.Section, entry.Name, entry.Points)
 
