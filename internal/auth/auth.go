@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -281,12 +282,17 @@ func RequireAuth(c *gin.Context) {
 	if err == nil {
 		c.Set("email", email)
 	}
-	
+
 	var role string
 	err = db.DB.QueryRow("SELECT role FROM users WHERE username = $1", claims.Username).Scan(&role)
 	if err == nil {
 		c.Set("role", role)
 	}
+
+	log.Println("Authorization header:", c.GetHeader("Authorization"))
+	log.Println("Claims from JWT:", claims.Username)
+	roleStr, _ := c.Get("role")
+	log.Println("Role from DB:", roleStr)
 
 	c.Next()
 }
