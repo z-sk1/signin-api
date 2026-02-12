@@ -1,11 +1,13 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/z-sk1/signin-api/internal/auth"
+	leaderboard "github.com/z-sk1/signin-api/internal/bateenfest"
 	"github.com/z-sk1/signin-api/internal/db"
 	"github.com/z-sk1/signin-api/internal/keep-track/expenses"
 	"github.com/z-sk1/signin-api/internal/remind-me/notes"
@@ -32,12 +34,24 @@ func main() {
 	r.POST("/forgot-password", auth.ForgotPassword)
 	r.POST("/reset-password", auth.ResetPassword)
 
+	// unprotected routes
+	r.GET("/leaderboard/:section", leaderboard.GetAllLeaderboardScores)
+
 	// protected routes
 	authRoutes := r.Group("/")
 	authRoutes.Use(auth.RequireAuth)
 	{
 		authRoutes.GET("/me", auth.Me)
 		authRoutes.DELETE("/delete", auth.DeleteAccount)
+
+		// admin
+		adminRoutes := r.Group("/admin")
+		adminRoutes.Use(auth.RequireAdmin)
+		{
+			adminRoutes.POST("/leaderboard", leaderboard.AddLeaderboardScore)
+			adminRoutes.DELETE("/leaderboard/:id", leaderboard.DeleteLeaderboardScore)
+			adminRoutes.PUT("/leaderboard/:id", leaderboard.UpdateLeaderboardScore)
+		}
 
 		// notes
 		authRoutes.POST("/notes", notes.CreateNote)
@@ -63,5 +77,10 @@ func main() {
 		authRoutes.PUT("/expenses/:id", expenses.UpdateExpense)
 	}
 
-	r.Run("0.0.0.0:8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	r.Run(":" + port)
 }

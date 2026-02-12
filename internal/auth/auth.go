@@ -44,7 +44,7 @@ func SignUp(c *gin.Context) {
 	// check if user exists
 
 	var exists int
-	err := db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = ? OR email = ?", newUser.Username, newUser.Email).Scan(&exists)
+	err := db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = $1 OR email = $2", newUser.Username, newUser.Email).Scan(&exists)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 		return
@@ -63,7 +63,7 @@ func SignUp(c *gin.Context) {
 	}
 
 	// insert new user
-	_, err = db.DB.Exec("INSERT INTO users(email, username, password) VALUES(?, ?, ?)", newUser.Email, newUser.Username, string(hashed))
+	_, err = db.DB.Exec("INSERT INTO users(email, username, password) VALUES($1, $2, $3)", newUser.Email, newUser.Username, string(hashed))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not create user"})
 		return
@@ -89,7 +89,7 @@ func Login(c *gin.Context) {
 		identifier = creds.Email
 	}
 
-	err := db.DB.QueryRow("SELECT username, email, password FROM users WHERE username = ? OR email = ?", identifier, identifier).Scan(&actualUsername, &storedEmail, &storedHashPassword)
+	err := db.DB.QueryRow("SELECT username, email, password FROM users WHERE username = $1 OR email = $2", identifier, identifier).Scan(&actualUsername, &storedEmail, &storedHashPassword)
 	if err == sql.ErrNoRows {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username/email or password"})
 		return
@@ -169,7 +169,7 @@ func ForgotPassword(c *gin.Context) {
 	}
 
 	var exists int
-	err := db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", body.Email).Scan(&exists)
+	err := db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = $1", body.Email).Scan(&exists)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 		return
@@ -191,7 +191,7 @@ func ForgotPassword(c *gin.Context) {
 	expiresAt := time.Now().Add(15 * time.Minute).Unix()
 
 	// store token
-	db.DB.Exec("INSERT INTO password_resets(email, token_hash, expires_at) VALUES(?, ?, ?)", body.Email, string(hash), expiresAt)
+	db.DB.Exec("INSERT INTO password_resets(email, token_hash, expires_at) VALUES($1, $2, $3)", body.Email, string(hash), expiresAt)
 
 	// send token for testing
 	c.JSON(http.StatusOK, gin.H{
@@ -239,14 +239,14 @@ func ResetPassword(c *gin.Context) {
 
 	newHash, _ := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
 
-	_, err = db.DB.Exec("UPDATE users SET password = ? WHERE email = ?", string(newHash), email)
+	_, err = db.DB.Exec("UPDATE users SET password = $1 WHERE email = $2", string(newHash), email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not update password"})
 		return
 	}
 
 	// delete used token
-	db.DB.Exec("DELETE FROM password_resets WHERE email = ?", email)
+	db.DB.Exec("DELETE FROM password_resets WHERE email = $1", email)
 
 	c.JSON(http.StatusOK, gin.H{"message": "password reset successful"})
 }
@@ -277,9 +277,32 @@ func RequireAuth(c *gin.Context) {
 	c.Set("username", claims.Username)
 
 	var email string
-	err = db.DB.QueryRow("SELECT email FROM users WHERE username = ?", claims.Username).Scan(&email)
+	err = db.DB.QueryRow("SELECT email FROM users WHERE username = $1", claims.Username).Scan(&email)
 	if err == nil {
 		c.Set("email", email)
+	}
+	
+	var role string
+	err = db.DB.QueryRow("SELECT role FROM users WHERE username = $1", claims.Username).Scan(&role)
+	if err == nil {
+		c.Set("role", role)
+	}
+
+	c.Next()
+}
+
+func RequireAdmin(c *gin.Context) {
+	role, exists := c.Get("role")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.Abort()
+		return
+	}
+
+	if roleStr, ok := role.(string); !ok || roleStr != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "admin only"})
+		c.Abort()
+		return
 	}
 
 	c.Next()

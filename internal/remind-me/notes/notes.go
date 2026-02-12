@@ -34,13 +34,13 @@ func CreateNote(c *gin.Context) {
 
 	// find user_id from username
 	var userID int
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
 		return
 	}
 
-	_, err = db.DB.Exec("INSERT INTO notes(username, title, content, user_id) VALUES (?, ?, ?, ?)", username, note.Title, note.Content, userID)
+	_, err = db.DB.Exec("INSERT INTO notes(username, title, content, user_id) VALUES ($1, $2, $3, $4)", username, note.Title, note.Content, userID)
 	if err != nil {
 		fmt.Println("Error inserting note:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save note"})
@@ -55,14 +55,14 @@ func GetAllNotes(c *gin.Context) {
 
 	// find user id
 	var userID int
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
 		return
 	}
 
 	// get all notes for user
-	rows, err := db.DB.Query("SELECT id, title, content, created_at FROM notes WHERE user_id = ?", userID)
+	rows, err := db.DB.Query("SELECT id, title, content, created_at FROM notes WHERE user_id = $1", userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find notes"})
 		return
@@ -89,14 +89,14 @@ func GetNoteCount(c *gin.Context) {
 
 	// find user id
 	var userID int
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
 		return
 	}
 
 	var total int
-	err = db.DB.QueryRow("SELECT COUNT(*) AS total FROM notes WHERE user_id = ?", userID).Scan(&total)
+	err = db.DB.QueryRow("SELECT COUNT(*) AS total FROM notes WHERE user_id = $1", userID).Scan(&total)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not read total notes"})
 		return 
@@ -137,7 +137,7 @@ func DeleteNote(c *gin.Context) {
 		return
 	}
 
-	_, err = db.DB.Exec("DELETE FROM notes WHERE id = ? AND username = ?", id, username)
+	_, err = db.DB.Exec("DELETE FROM notes WHERE id = $1 AND username = $2", id, username)
 	if err != nil {
 		fmt.Println("Error deleting note:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not delete note"})
@@ -166,7 +166,7 @@ func UpdateNote(c *gin.Context) {
 	}
 
 	// make sure the note belongs to the user
-	res, err := db.DB.Exec("UPDATE notes SET title = ?, content = ? WHERE id = ? AND user_id = (SELECT id FROM users WHERE username = ?)", note.Title, note.Content, id, username)
+	res, err := db.DB.Exec("UPDATE notes SET title = $1, content = $2 WHERE id = $3 AND user_id = (SELECT id FROM users WHERE username = $4)", note.Title, note.Content, id, username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update note"})
 		return

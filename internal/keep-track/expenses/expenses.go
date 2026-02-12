@@ -34,7 +34,7 @@ func CreateExpense(c *gin.Context) {
 
 	// find user_id from username
 	var userID int
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
 		return
@@ -46,7 +46,7 @@ func CreateExpense(c *gin.Context) {
 		return
 	}
 
-	_, err = db.DB.Exec("INSERT INTO expenses(username, amount, category, date, note, user_id) VALUES (?, ?, ?, ?, ?, ?)", username, expense.Amount, expense.Category, date, expense.Note, userID)
+	_, err = db.DB.Exec("INSERT INTO expenses(username, amount, category, date, note, user_id) VALUES ($1, $2, $3, $4, $5, $6)", username, expense.Amount, expense.Category, date, expense.Note, userID)
 	if err != nil {
 		fmt.Println("Error insterting expense", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save expense"})
@@ -61,14 +61,14 @@ func GetAllExpenses(c *gin.Context) {
 
 	// find user id
 	var userID int
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
 		return
 	}
 
 	// get all expenses for user
-	rows, err := db.DB.Query("SELECT id, amount, category, date, note FROM expenses WHERE user_id = ?", userID)
+	rows, err := db.DB.Query("SELECT id, amount, category, date, note FROM expenses WHERE user_id = $1", userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find expenses"})
 		return
@@ -95,7 +95,7 @@ func GetTotalExpenses(c *gin.Context) {
 
 	// find user id
 	var userID int
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
 		return
@@ -103,7 +103,7 @@ func GetTotalExpenses(c *gin.Context) {
 
 	// find total spent 
 	var total float64 
-	err = db.DB.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?", userID).Scan(&total)
+	err = db.DB.QueryRow("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = $1", userID).Scan(&total)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not calculate total"})
 		return 
@@ -117,13 +117,13 @@ func GetExpenseCategories(c *gin.Context) {
 
 	// find user id 
 	var userID int
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT category, COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ? GROUP BY category", userID)
+	rows, err := db.DB.Query("SELECT category, COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = $1 GROUP BY category", userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not fetch categories"})
 		return
@@ -181,7 +181,7 @@ func DeleteExpense(c *gin.Context) {
 		return
 	}
 
-	_, err = db.DB.Exec("DELETE FROM expenses WHERE id = ? AND username = ?", id, username)
+	_, err = db.DB.Exec("DELETE FROM expenses WHERE id = $1 AND username = $2", id, username)
 	if err != nil {
 		fmt.Println("Error deleting expense:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not delete expense"})
@@ -218,7 +218,7 @@ func UpdateExpense(c *gin.Context) {
 		return
 	}
 
-	res, err := db.DB.Exec("UPDATE expenses SET amount = ?, category = ?, date = ?, note = ? WHERE id = ? AND user_id = (SELECT id FROM users WHERE username = ?)", expense.Amount, expense.Category, date, expense.Note, id, username)
+	res, err := db.DB.Exec("UPDATE expenses SET amount = $1, category = $2, date = $3, note = $4 WHERE id = $5 AND user_id = (SELECT id FROM users WHERE username = $6)", expense.Amount, expense.Category, date, expense.Note, id, username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update expense"})
 		return

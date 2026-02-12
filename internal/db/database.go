@@ -3,70 +3,127 @@ package db
 import (
 	"database/sql"
 	"log"
+	"os"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var DB *sql.DB
 
-func InitDB() {
-	var err error
-	DB, err = sql.Open("sqlite3", "./data.db")
+func ensureAdmin() {
+	var count int
+
+	err := DB.QueryRow("SELECT COUNT(*) from USERS WHERE role = 'admin'").Scan(&count)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	password := os.Getenv("ADMIN_PASSWORD")
+
+	// hash the password
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = DB.Exec(`
+		INSERT INTO USERS (email, username, password, role)
+		VALUES ($1, $2, $3, $4)
+	`,
+		"ziad.skafi12@gmail.com",
+		"ziad",
+		hashed,
+		"admin",
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Default admin account created")
+}
+
+func InitDB() {
+	var err error
+
+	// Example connection string:
+	connStr := os.Getenv("DATABASE_URL")
+	// DATABASE_URL example: "postgres://user:password@localhost:5432/dbname?sslmode=disable"
+
+	DB, err = sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = DB.Ping()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	createTables()
+	ensureAdmin()
+
+	log.Println("Database successfully initialized")
+}
+
+func createTables() {
 	createTables := `
 	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id SERIAL PRIMARY KEY,
 		email TEXT NOT NULL UNIQUE,
 		username TEXT NOT NULL UNIQUE,
-		password TEXT NOT NULL UNIQUE
+		password TEXT NOT NULL,
+		role TEXT NOT NULL DEFAULT 'user'
 	);
 
 	CREATE TABLE IF NOT EXISTS password_resets (
 		email TEXT NOT NULL,
 		token_hash TEXT NOT NULL,
-		expires_at INTEGER NOT NULL
+		expires_at BIGINT NOT NULL
 	);
 
 	CREATE TABLE IF NOT EXISTS notes (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		user_id INTEGER NOT NULL,
+		id SERIAL PRIMARY KEY,
+		user_id INT NOT NULL REFERENCES users(id),
 		username TEXT NOT NULL,
 		title TEXT,
 		content TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY(user_id) REFERENCES users(id)	
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 
 	CREATE TABLE IF NOT EXISTS reminders (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		user_id INTEGER NOT NULL,
+		id SERIAL PRIMARY KEY,
+		user_id INT NOT NULL REFERENCES users(id),
 		username TEXT NOT NULL,
 		title TEXT,
 		content TEXT,
-		due DATETIME NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY(user_id) REFERENCES users(id)
+		due TIMESTAMP NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 
 	CREATE TABLE IF NOT EXISTS expenses (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		user_id INTEGER NOT NULL,
+		id SERIAL PRIMARY KEY,
+		user_id INT NOT NULL REFERENCES users(id),
 		username TEXT NOT NULL,
-		amount FLOAT NOT NULL,
+		amount DOUBLE PRECISION NOT NULL,
 		category TEXT NOT NULL,
-		date DATETIME NOT NULL,
-		note TEXT,
-		FOREIGN KEY(user_id) REFERENCES users(id)
+		date TIMESTAMP NOT NULL,
+		note TEXT
+	);
+
+	CREATE TABLE IF NOT EXISTS leaderboard (
+		id SERIAL PRIMARY KEY,
+		user_id INT NOT NULL REFERENCES users(id),
+		username TEXT NOT NULL,
+		section TEXT NOT NULL,
+		name TEXT NOT NULL,
+		points INT NOT NULL
 	);
 	`
 
-	_, err = DB.Exec(createTables)
+	_, err := DB.Exec(createTables)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	log.Println("database succesfully initalised")
 }

@@ -35,7 +35,7 @@ func CreateReminder(c *gin.Context) {
 
 	// find user_id from username
 	var userID int
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find users"})
 		return
@@ -47,7 +47,7 @@ func CreateReminder(c *gin.Context) {
 		return
 	}
 
-	_, err = db.DB.Exec("INSERT INTO reminders(username, title, content, due, user_id) VALUES (?, ?, ?, ?, ?)", username, reminder.Title, reminder.Content, dueTime, userID)
+	_, err = db.DB.Exec("INSERT INTO reminders(username, title, content, due, user_id) VALUES ($1, $2, $3, $4, $5)", username, reminder.Title, reminder.Content, dueTime, userID)
 	if err != nil {
 		fmt.Println("Error inserting reminder:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save reminder"})
@@ -62,14 +62,14 @@ func GetAllReminders(c *gin.Context) {
 
 	// find user id
 	var userID int
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
 		return
 	}
 
 	// get all reminders for user
-	rows, err := db.DB.Query("SELECT id, title, content, due, created_at FROM reminders WHERE user_id = ?", userID)
+	rows, err := db.DB.Query("SELECT id, title, content, due, created_at FROM reminders WHERE user_id = $1", userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find reminders"})
 		return
@@ -96,14 +96,14 @@ func GetReminderCount(c *gin.Context) {
 
 	// find user id 
 	var userID int 
-	err := db.DB.QueryRow("SELECT id FROM users WHERE username = ?", username).Scan(&userID)
+	err := db.DB.QueryRow("SELECT id FROM users WHERE username = $1", username).Scan(&userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not find user"})
 		return
 	}
 
 	var total int
-	err = db.DB.QueryRow("SELECT COUNT(*) AS total FROM reminders WHERE user_id = ?", userID).Scan(&total)
+	err = db.DB.QueryRow("SELECT COUNT(*) AS total FROM reminders WHERE user_id = $1", userID).Scan(&total)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not get reminder count"})
 		return
@@ -145,7 +145,7 @@ func DeleteReminder(c *gin.Context) {
 		return
 	}
 
-	_, err = db.DB.Exec("DELETE FROM reminders WHERE id = ? AND username = ?", id, username)
+	_, err = db.DB.Exec("DELETE FROM reminders WHERE id = $1 AND username = $2", id, username)
 	if err != nil {
 		fmt.Println("Error deleting reminder:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not delete reminder"})
@@ -180,7 +180,7 @@ func UpdateReminder(c *gin.Context) {
 		return
 	}
 
-	res, err := db.DB.Exec("UPDATE reminders SET title = ?, content = ?, due = ? WHERE id = ? AND user_id = (SELECT id FROM users WHERE username = ?)", reminder.Title, reminder.Content, dueTime, id, username)
+	res, err := db.DB.Exec("UPDATE reminders SET title = $1, content = $2, due = $3 WHERE id = $4 AND user_id = (SELECT id FROM users WHERE username = $5)", reminder.Title, reminder.Content, dueTime, id, username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update reminder"})
 		return
