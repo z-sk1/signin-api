@@ -36,18 +36,6 @@ func AddLeaderboardScore(c *gin.Context) {
 		return
 	}
 
-	var name string
-	err = db.DB.QueryRow("SELECT name FROM users WHERE username = $1", username).Scan(&name)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
-		return
-	}
-
-	if name == entry.Name {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name already exists"})
-		return
-	}
-
 	_, err = db.DB.Exec(`
 		INSERT INTO leaderboard (user_id, username, section, name, points)
 		VALUES ($1, $2, $3, $4, $5)
